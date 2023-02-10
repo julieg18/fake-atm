@@ -46,9 +46,9 @@ USER add_user_to_db(char *email, char *password, char *name, int amount, USER *c
 }
 
 USER get_user(char *email_input, USER *current_user) {
-  FILE* fp = fopen("./database.csv", "r");
+  FILE* database = fopen("./database.csv", "r");
 
-  if (!fp) {
+  if (!database) {
     printf("Error! We are not able to find the database.");
     return *current_user;
   }
@@ -61,7 +61,7 @@ USER get_user(char *email_input, USER *current_user) {
   char email[321];
   int amount;
 
-  while (fgets(buffer, 1024, fp)) {
+  while (fgets(buffer, 1024, database)) {
     column = 0;
     row++;
     if (row == 1)
@@ -105,7 +105,7 @@ int main(void) {
   char name[31] = "name";
   char password[31] = "password";
   char email[321] = "email@gmail.com";
-  
+  // welcome and show options
   printf("Welcome to @julieg18's Fake ATM\n\n");
   printf("Please login or sign up:\n\n(1) Login\n(2) Create an account\nOption: ");
   scanf("%s", option);
@@ -113,6 +113,7 @@ int main(void) {
     printf("%s is not an option. Please try again: ", option);
     scanf("%s", option);
   }
+  // option login was chosen
   if (strcmp(option, "1") == 0) {
     printf("Email: ");
     scanf("%s", email);
@@ -129,8 +130,9 @@ int main(void) {
       scanf("%s", password);
     }
 
-    printf("You have been logged in! Welcome Back!");
+    printf("You are now logged in! Welcome Back!");
   }
+  // option sign up was chosen
   if (strcmp(option, "2") == 0) {
     printf("Creating account...\nName: ");
     scanf("%s", name);
@@ -142,7 +144,7 @@ int main(void) {
     add_user_to_db(email, password, name, 0, &current_user);
     printf("Account created! You are now logged in.\n");
   }
-
+  // user can now access account
   printf("\nHello %s\n", current_user.name);
   printf("What task are you interested in making today?\n\n(1) Add Money\n(2) Withdraw Money\nOption: ");
   scanf("%s", option);
@@ -150,6 +152,7 @@ int main(void) {
     printf("%s is not an option. Please try again: ", option);
     scanf("%s", option);
   }
+  // user wants to add money (updates within a session, but does not update within db)
   if (strcmp(option, "1") == 0) {
     printf("What amount are you adding?: ");
     scanf("%s", option);
@@ -157,6 +160,7 @@ int main(void) {
     update_user_amount(&current_user, amount_input);
     printf("Your amount is now: %d\n", current_user.amount);
   }
+  // user wants to withdraw money (updates within a session, but does not update within db)
   if (strcmp(option, "2") == 0) {
     printf("What amount are you withdrawing?: ");
     scanf("%s", option);
