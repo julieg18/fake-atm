@@ -29,6 +29,16 @@ USER update_user(char *email, char *password, char *name, USER *current_user) {
   return *current_user;
 }
 
+USER update_user_amount(USER *user, int amount) {
+  user->amount = amount;
+  return *user;
+}
+
+USER adjust_user_amount(USER *user, int amount) {
+  user->amount += amount;
+  return *user;
+}
+
 USER add_user_to_db(char *email, char *password, char *name, int amount, USER *current_user) {
   FILE* fp = fopen("./database.csv", "a+");
 
@@ -43,6 +53,46 @@ USER add_user_to_db(char *email, char *password, char *name, int amount, USER *c
   update_user(email, password, name, current_user);
 
   return *current_user;
+}
+
+USER get_user_from_csv_line(char line[400], USER *user) {
+  char line_copy[400];
+  strcpy(line_copy, line);
+  char* value = strtok(line_copy, ", ");
+  char name[31];
+  char password[31];
+  char email[321];
+  int amount;
+  int column = 0;
+
+  while (value) {
+    switch(column) {
+      case 0:
+        strcpy(email, value);
+        break;
+      case 1:
+        strcpy(password, value);
+        break;
+      case 2:
+        strcpy(name, value);
+        break;
+      case 3:
+        amount = atoi(value);
+        break;
+      }
+      value = strtok(NULL, ", ");
+      column++;
+  }
+  
+  update_user(email, password, name, user);
+  update_user_amount(user, amount);
+
+  return *user;
+}
+
+char get_csv_line_from_user(char *line, USER *user) {
+  snprintf(line, 400, "%s,%s,%s,%d\n", user->email, user->password, user->name, user->amount);
+  return *line;
 }
 
 USER get_user(char *email_input, USER *current_user) {
@@ -94,13 +144,59 @@ USER get_user(char *email_input, USER *current_user) {
   return *current_user;
 }
 
-USER update_user_amount(USER *st, int amount) {
-  st->amount += amount;
-  return *st;
+USER update_user_amount_in_db(USER *current_user, int amount) {
+  FILE *db_file;
+  FILE *tmp_file;
+  int current_line_ind = 0;
+  db_file = fopen("./database.csv", "r");
+  tmp_file = fopen("./tmp.csv", "w");
+  char new_line[400];
+  char current_line[400];
+  USER empty_user = {"", "", "", 0};
+  USER current_line_user = {"", "", "", 0};
+  while(!feof(db_file)) {
+    // set up variables
+    current_line_ind++;
+    strcpy(current_line, "\0");
+    fgets(current_line, 400, db_file);
+
+    // skip headers
+    if (current_line_ind == 1) {
+      fprintf(tmp_file, "%s", current_line);
+      continue;
+    }
+ 
+    // get user from current line
+    if (strlen(current_line) == 0) {
+      update_user(empty_user.email, empty_user.password, empty_user.name, &current_line_user);
+    } else {
+      get_user_from_csv_line(current_line, &current_line_user);
+    }
+
+    // if email matches, update line
+    if (strcmp(current_line_user.email, current_user->email) == 0) {
+      update_user_amount(&current_line_user, amount);
+      get_csv_line_from_user(new_line, &current_line_user);
+      fprintf(tmp_file, "%s", new_line);
+    } else {
+      fprintf(tmp_file, "%s", current_line);
+    }
+  }
+  fclose(db_file);
+  fclose(tmp_file);
+  remove("./database.csv");
+  rename("./tmp.csv", "./database.csv");
+
+  return *current_user;
 }
 
+// TODO
+// adjust current_user to be currently empty
+// setup login/signup to update current_user with database info correctly
+
 int main(void) {
-  USER current_user = {"test@gmail.com", "password", "User", 5};
+  USER current_user = {"test@gmail.com", "test1", "Julie", 10};
+  
   char option[5];
   char name[31] = "name";
   char password[31] = "password";
@@ -129,7 +225,6 @@ int main(void) {
       printf("Password is incorrect. Please try again: ");
       scanf("%s", password);
     }
-
     printf("You are now logged in! Welcome Back!");
   }
   // option sign up was chosen
@@ -152,12 +247,13 @@ int main(void) {
     printf("%s is not an option. Please try again: ", option);
     scanf("%s", option);
   }
-  // user wants to add money (updates within a session, but does not update within db)
+  // user wants to add money
   if (strcmp(option, "1") == 0) {
     printf("What amount are you adding?: ");
     scanf("%s", option);
     int amount_input = atoi(option);
-    update_user_amount(&current_user, amount_input);
+    adjust_user_amount(&current_user, amount_input);
+    update_user_amount_in_db(&current_user, current_user.amount);
     printf("Your amount is now: %d\n", current_user.amount);
   }
   // user wants to withdraw money (updates within a session, but does not update within db)
@@ -168,9 +264,11 @@ int main(void) {
     while (current_user.amount + amount_input * -1 < 0) {
       printf("You do not have %d in your account. Please choose an amount below %d: ", amount_input, current_user.amount);
       scanf("%s", option);
+      amount_input = atoi(option);
     }
-    update_user_amount(&current_user, amount_input * -1);
+    adjust_user_amount(&current_user, amount_input * -1);
     printf("\nDispensing Now...\n");
+    update_user_amount_in_db(&current_user, current_user.amount);
     for (int i = 0; i < amount_input; i++) {
       printf("💵");
     }
