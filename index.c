@@ -39,20 +39,18 @@ USER adjust_user_amount(USER *user, int amount) {
   return *user;
 }
 
-USER add_user_to_db(char *email, char *password, char *name, int amount, USER *current_user) {
+USER add_user_to_db(USER *user) {
   FILE* fp = fopen("./database.csv", "a+");
 
     if (!fp) {
     printf("Error! We are not able to find the database.");
-    return *current_user;
+    return *user;
   }
 
-  fprintf(fp, "%s,%s,%s,%d\n", email, password, name, amount);
+  fprintf(fp, "%s,%s,%s,%d\n", user->email, user->password, user->name, user->amount);
   fclose(fp);
 
-  update_user(email, password, name, current_user);
-
-  return *current_user;
+  return *user;
 }
 
 USER get_user_from_csv_line(char line[400], USER *user) {
@@ -95,12 +93,12 @@ char get_csv_line_from_user(char *line, USER *user) {
   return *line;
 }
 
-USER get_user(char *email_input, USER *current_user) {
+USER get_user(char *email_input, USER *user) {
   FILE* database = fopen("./database.csv", "r");
 
   if (!database) {
     printf("Error! We are not able to find the database.");
-    return *current_user;
+    return *user;
   }
 
   char buffer[1024];
@@ -131,8 +129,9 @@ USER get_user(char *email_input, USER *current_user) {
         case 3:
           amount = atoi(value);
           if (strcmp(email_input, email) == 0) {
-            update_user(email, password, name, current_user);
-            return *current_user;
+            update_user(email, password, name, user);
+            update_user_amount(user, amount)
+;            return *user;
           }
           break;
       }
@@ -141,7 +140,7 @@ USER get_user(char *email_input, USER *current_user) {
     }
     printf("\n");
   }
-  return *current_user;
+  return *user;
 }
 
 USER update_user_amount_in_db(USER *current_user, int amount) {
@@ -191,16 +190,15 @@ USER update_user_amount_in_db(USER *current_user, int amount) {
 }
 
 // TODO
-// adjust current_user to be currently empty
-// setup login/signup to update current_user with database info correctly
+// use better alternative than scanf (doesn't work with spaces)
 
 int main(void) {
-  USER current_user = {"test@gmail.com", "test1", "Julie", 10};
+  USER current_user = {"", "", "", 0};
   
   char option[5];
-  char name[31] = "name";
-  char password[31] = "password";
-  char email[321] = "email@gmail.com";
+  char name[31] = "";
+  char password[31] = "";
+  char email[321] = "";
   // welcome and show options
   printf("Welcome to @julieg18's Fake ATM\n\n");
   printf("Please login or sign up:\n\n(1) Login\n(2) Create an account\nOption: ");
@@ -236,7 +234,9 @@ int main(void) {
     printf("Password: ");
     scanf("%s", password);
     printf("...\n");
-    add_user_to_db(email, password, name, 0, &current_user);
+    update_user(email, password, name, &current_user);
+    update_user_amount(&current_user, 0);
+    add_user_to_db(&current_user);
     printf("Account created! You are now logged in.\n");
   }
   // user can now access account
